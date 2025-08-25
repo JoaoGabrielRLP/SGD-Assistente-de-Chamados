@@ -1,0 +1,180 @@
+/* Estilos Gerais */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  width: 420px;
+  background-color: #f4f7f9;
+  color: #333;
+  margin: 0;
+}
+
+.container {
+  padding: 15px;
+}
+
+h2, h3 {
+  color: #005a9c;
+  border-bottom: 2px solid #e0e0e0;
+  padding-bottom: 5px;
+  margin-top: 20px;
+  margin-bottom: 15px;
+}
+
+h3 {
+  font-size: 1em;
+  border-bottom: 1px solid #eee;
+}
+
+/* Abas */
+.tabs {
+  display: flex;
+  border-bottom: 1px solid #ccc;
+}
+
+.tab-button {
+  padding: 10px 15px;
+  cursor: pointer;
+  border: none;
+  background-color: transparent;
+  border-bottom: 3px solid transparent;
+  font-size: 1em;
+  transition: all 0.2s ease-in-out;
+}
+
+.tab-button:hover {
+  background-color: #e9ecef;
+}
+
+.tab-button.active {
+  border-bottom: 3px solid #007bff;
+  font-weight: 600;
+  color: #007bff;
+}
+
+.tab-content {
+  display: none;
+  padding-top: 15px;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+/* Calendário */
+#calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+#calendar-header button {
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+#calendar-body {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+  text-align: center;
+}
+
+.calendar-day-header {
+  font-weight: bold;
+  font-size: 0.8em;
+  padding: 5px;
+}
+
+.calendar-day {
+  padding: 8px 5px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.peak-day {
+  background-color: #ffc107;
+  color: #333;
+  font-weight: bold;
+}
+
+.today {
+  box-shadow: 0 0 0 2px #007bff;
+}
+
+/* Formulários e Botões */
+input[type="time"], input[type="date"], input[type="text"] {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.form-group {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-primary {
+  width: 100%;
+  padding: 10px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+  font-weight: bold;
+}
+
+.btn-primary:hover {
+  background-color: #218838;
+}
+
+/* Lista de Lembretes */
+ul {
+  list-style: none;
+  padding: 0;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  border-bottom: 1px solid #eee;
+  font-size: 0.9em;
+}
+
+li button {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+/* Configurações */
+.setting {
+  margin-bottom: 20px;
+}
+.setting label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+#current-sound-name {
+    font-style: italic;
+    color: #555;
+    font-size: 0.9em;
+}

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Notificações SGD</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="container">
+    <div class="tabs">
+      <button class="tab-button active" data-tab="calendario">Lembretes e Pico</button>
+      <button class="tab-button" data-tab="configuracoes">Configurações</button>
+    </div>
+
+    <!-- Aba de Calendário e Lembretes -->
+    <div id="calendario" class="tab-content active">
+      <section>
+        <h2>Horários de Pico</h2>
+        <p style="text-align: center; font-size: 0.9em; margin-top: -10px;">O horário de pico ocorre das <strong>13:30 às 15:00</strong> nos dias marcados.</p>
+        <div id="calendar-container">
+          <div id="calendar-header">
+            <button id="prev-month">&lt;</button>
+            <h3 id="month-year"></h3>
+            <button id="next-month">&gt;</button>
+          </div>
+          <div id="calendar-body"></div>
+        </div>
+      </section>
+      
+      <section>
+        <h2>Adicionar Lembrete Diário</h2>
+        <div class="form-group">
+          <input type="time" id="horarioLembrete" />
+          <input type="date" id="diaLembrete" />
+        </div>
+        <input type="text" id="mensagemLembrete" placeholder="Mensagem do lembrete" />
+        <button id="adicionarLembrete" class="btn-primary">Adicionar Lembrete</button>
+        <h3>Lembretes Ativos</h3>
+        <ul id="listaLembretes"></ul>
+      </section>
+    </div>
+
+    <!-- Aba de Configurações -->
+    <div id="configuracoes" class="tab-content">
+      <h2>Configurações Gerais</h2>
+      <div class="setting">
+        <label for="volume">Volume da Notificação:</label>
+        <input type="range" id="volume" min="0" max="1" step="0.1" value="1">
+      </div>
+      <div class="setting">
+        <label for="sound-picker">Som da Notificação (MP3):</label>
+        <input type="file" id="sound-picker" accept=".mp3">
+        <span id="current-sound-name">Som atual: Padrão</span>
+      </div>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,71 @@
+/* Container principal da notificação */
+#sgd-notification-div {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 350px;
+    background-color: #ffffff;
+    color: #333;
+    padding: 20px;
+    border-radius: 8px;
+    z-index: 2147483647 !important; /* Garante máxima prioridade de exibição */
+    box-shadow: 0px 5px 15px rgba(0,0,0,0.2);
+    font-family: Arial, sans-serif;
+    font-size: 16px;
+    border-left: 5px solid #007bff;
+    animation: slideInFromRight 0.5s ease-out;
+    box-sizing: border-box;
+}
+
+/* Texto da mensagem */
+#sgd-notification-div p {
+    margin: 0 0 20px 0;
+    line-height: 1.5;
+    padding: 0;
+    color: #333;
+}
+
+/* Container dos botões */
+.sgd-button-container {
+    display: flex;
+    gap: 10px;
+}
+
+/* Estilo base para os botões */
+.sgd-notification-button {
+    flex: 1;
+    padding: 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    border: 1px solid transparent;
+    transition: background-color 0.2s;
+    font-size: 14px;
+    background-color: #e9ecef;
+    color: #333;
+    border-color: #ddd;
+}
+
+/* Estilo para o botão secundário (azul) */
+.sgd-notification-button.sgd-secondary {
+    background-color: #007bff;
+    color: white;
+    border-color: transparent;
+}
+
+/* Efeito hover para os botões */
+.sgd-notification-button:hover {
+    opacity: 0.9;
+}
+
+/* Animação de entrada */
+@keyframes slideInFromRight {
+    from {
+        transform: translateX(110%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
