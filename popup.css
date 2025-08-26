@@ -1,180 +1,95 @@
 /* Estilos Gerais */
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  width: 420px;
+  width: 480px;
   background-color: #f4f7f9;
   color: #333;
   margin: 0;
 }
-
-.container {
-  padding: 15px;
-}
-
-h2, h3 {
+.container { padding: 15px; }
+h2 {
   color: #005a9c;
   border-bottom: 2px solid #e0e0e0;
   padding-bottom: 5px;
   margin-top: 20px;
   margin-bottom: 15px;
-}
-
-h3 {
-  font-size: 1em;
-  border-bottom: 1px solid #eee;
+  font-size: 1.1em;
 }
 
 /* Abas */
-.tabs {
-  display: flex;
-  border-bottom: 1px solid #ccc;
-}
-
-.tab-button {
-  padding: 10px 15px;
-  cursor: pointer;
-  border: none;
-  background-color: transparent;
-  border-bottom: 3px solid transparent;
-  font-size: 1em;
-  transition: all 0.2s ease-in-out;
-}
-
-.tab-button:hover {
-  background-color: #e9ecef;
-}
-
-.tab-button.active {
-  border-bottom: 3px solid #007bff;
-  font-weight: 600;
-  color: #007bff;
-}
-
-.tab-content {
-  display: none;
-  padding-top: 15px;
-}
-
-.tab-content.active {
-  display: block;
-}
+.tabs { display: flex; border-bottom: 1px solid #ccc; }
+.tab-button { padding: 10px 15px; cursor: pointer; border: none; background-color: transparent; border-bottom: 3px solid transparent; font-size: 1em; transition: all 0.2s ease-in-out; }
+.tab-button:hover { background-color: #e9ecef; }
+.tab-button.active { border-bottom: 3px solid #007bff; font-weight: 600; color: #007bff; }
+.tab-content { display: none; padding-top: 15px; }
+.tab-content.active { display: block; }
 
 /* Calendário */
-#calendar-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
+#calendar-container { position: relative; }
+#calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+#calendar-header button { background: #007bff; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-weight: bold; }
+#calendar-body { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; }
+.calendar-day-header { font-weight: bold; font-size: 0.8em; padding: 5px; color: #666; }
+.calendar-day { padding: 8px 5px; border-radius: 4px; transition: background-color 0.2s; position: relative; cursor: default; }
+.calendar-day.has-events:hover { background-color: #e9ecef; }
+.today { box-shadow: 0 0 0 2px #007bff inset; }
 
-#calendar-header button {
-  background: #007bff;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 30px;
-  height: 30px;
-  cursor: pointer;
-  font-weight: bold;
-}
+/* Cores de Prioridade */
+.prio-lembrete, .day-color-lembrete { background-color: #28a745; color: white; }
+.prio-importante, .day-color-importante { background-color: #ffc107; color: #333; }
+.prio-urgente, .day-color-urgente { background-color: #dc3545; color: white; }
 
-#calendar-body {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 5px;
-  text-align: center;
-}
+/* Contador de Eventos */
+.event-count { position: absolute; top: 2px; right: 4px; font-size: 0.7em; background-color: rgba(0,0,0,0.4); color: white; border-radius: 50%; width: 16px; height: 16px; line-height: 16px; text-align: center; }
 
-.calendar-day-header {
-  font-weight: bold;
-  font-size: 0.8em;
-  padding: 5px;
+/* Popover do Calendário */
+.day-popover {
+    display: none; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    width: 250px; background: white; border: 1px solid #ccc; border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 100; padding: 10px;
+    text-align: left;
 }
+.calendar-day:hover .day-popover { display: block; }
 
-.calendar-day {
-  padding: 8px 5px;
-  border-radius: 4px;
-  transition: background-color 0.2s;
-}
+/* **CORREÇÃO:** Regras para ajustar a posição do popover */
+.day-popover.align-left { left: 0; transform: translateX(0); }
+.day-popover.align-right { left: auto; right: 0; transform: translateX(0); }
 
-.peak-day {
-  background-color: #ffc107;
-  color: #333;
-  font-weight: bold;
-}
+.popover-list { list-style: none; padding: 0; margin: 0; }
+.popover-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #f0f0f0; font-size: 0.9em; }
+.popover-item:last-child { border-bottom: none; }
+.popover-item-details { display: flex; align-items: center; gap: 8px; overflow: hidden; }
+/* **CORREÇÃO:** Garante que o texto dentro do popover seja escuro */
+.popover-item-details span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #333; }
+.popover-item-color { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.popover-item-actions { display: flex; }
+.popover-item-actions button { background: none; border: none; cursor: pointer; padding: 2px; }
+.popover-item-actions button:hover { opacity: 0.7; }
 
-.today {
-  box-shadow: 0 0 0 2px #007bff;
-}
-
-/* Formulários e Botões */
-input[type="time"], input[type="date"], input[type="text"] {
-  width: 100%;
-  padding: 8px;
-  margin-bottom: 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  box-sizing: border-box;
-}
-
-.form-group {
-  display: flex;
-  gap: 10px;
-}
-
-.btn-primary {
-  width: 100%;
-  padding: 10px;
-  background-color: #28a745;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 1em;
-  font-weight: bold;
-}
-
-.btn-primary:hover {
-  background-color: #218838;
-}
-
-/* Lista de Lembretes */
-ul {
-  list-style: none;
-  padding: 0;
-  max-height: 150px;
-  overflow-y: auto;
-}
-
-li {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px;
-  border-bottom: 1px solid #eee;
-  font-size: 0.9em;
-}
-
-li button {
-  background-color: #dc3545;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  padding: 4px 8px;
-  cursor: pointer;
-}
+/* Formulário de Lembrete */
+.form-section { margin-top: 20px; }
+.form-group { display: flex; gap: 10px; margin-bottom: 10px; }
+.options-group { justify-content: space-between; }
+input[type="text"], input[type="date"], input[type="time"] { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+.radio-group { display: flex; gap: 5px; align-items: center; }
+.radio-group input[type="radio"] { display: none; }
+.radio-group label { padding: 4px 8px; border: 1px solid #ccc; border-radius: 12px; cursor: pointer; font-size: 0.8em; }
+.radio-group input[type="radio"]:checked + label { background-color: #007bff; color: white; border-color: #007bff; }
+.btn-primary { width: 100%; padding: 10px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1em; font-weight: bold; }
+.btn-primary:hover { background-color: #218838; }
 
 /* Configurações */
-.setting {
-  margin-bottom: 20px;
-}
-.setting label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: 500;
-}
-#current-sound-name {
-    font-style: italic;
-    color: #555;
-    font-size: 0.9em;
-}
+.setting { margin-bottom: 20px; }
+.setting label { display: block; margin-bottom: 5px; font-weight: 500; }
+#current-sound-name { font-style: italic; color: #555; font-size: 0.9em; }
+
+/* Modal */
+#modal-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 200; display: flex; justify-content: center; align-items: center; }
+#modal-content { background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 450px; }
+#modal-content h3 { margin-top: 0; }
+#modal-content .form-section { margin-top: 0; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+.modal-actions button { padding: 8px 16px; border-radius: 5px; border: none; cursor: pointer; }
+.btn-secondary { background-color: #6c757d; color: white; }
+.btn-danger { background-color: #dc3545; color: white; }
+.hidden { display: none !important; }

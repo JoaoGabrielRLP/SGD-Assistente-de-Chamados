@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "SGD Notifier",
-  "version": "2.2",
-  "description": "Notificações para técnicos no horário de pico e lembretes diários.",
+  "version": "2.3",
+  "description": "Notificações para técnicos no horário de pico e lembretes diários com agendamento avançado.",
   "permissions": [
     "storage",
     "notifications",

@@ -8,35 +8,23 @@ chrome.runtime.onInstalled.addListener(() => {
   updateHolidays();
 });
 
-// --- Listeners de Eventos do Navegador ---
+// --- Listeners de Alarmes e Mensagens ---
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "verificarNotificacoes") {
     verificarHorarios();
   } else if (alarm.name.startsWith("reschedule_")) {
     const notificationData = JSON.parse(alarm.name.substring(11));
-    exibirNotificacao(notificationData.message, notificationData.type, notificationData.reminderIndex);
+    exibirNotificacao(notificationData.message, notificationData.type, notificationData.reminderIndex, notificationData.prioridade);
   }
 });
 
-// **CORREÇÃO:** Listener para quando o usuário troca de aba.
-chrome.tabs.onActivated.addListener(async (activeInfo) => {
-    const { activeSgdNotification } = await chrome.storage.session.get('activeSgdNotification');
-    // Se houver uma notificação ativa, mostra a div na nova aba.
-    if (activeSgdNotification) {
-        showDivInTab(activeInfo.tabId, activeSgdNotification);
-    }
-});
-
-// --- Comunicação com Content Scripts ---
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.type === 'get_peak_days') {
-    getPeakDays(request.year, request.month).then(days => sendResponse(days.map(d => d.getDate())));
+  if (request.type === 'get_events_for_month') {
+    getScheduledEvents(request.year, request.month).then(sendResponse);
     return true;
   } else if (request.type === 'notification_action') {
-    // Ação unificada para botões (da div ou da notificação nativa).
     handleNotificationAction(request.notificationId, request.buttonIndex);
   } else if (request.type === 'query_active_notification') {
-    // O content script pergunta se há uma notificação ativa.
     chrome.storage.session.get('activeSgdNotification').then(({ activeSgdNotification }) => {
         if (activeSgdNotification) {
             sendResponse(activeSgdNotification);
@@ -46,7 +34,197 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-// --- Lógica de Feriados (Inalterada) ---
+chrome.tabs.onActivated.addListener(async (activeInfo) => {
+    const { activeSgdNotification } = await chrome.storage.session.get('activeSgdNotification');
+    if (activeSgdNotification) {
+        showDivInTab(activeInfo.tabId, activeSgdNotification);
+    }
+});
+
+
+// --- Lógica de Cálculo de Eventos ---
+async function getScheduledEvents(year, month) {
+    const { lembretes = [] } = await chrome.storage.local.get('lembretes');
+    const peakDays = await getPeakDays(year, month);
+    const eventsByDay = {};
+
+    const startDate = new Date(year, month, 1);
+    const endDate = new Date(year, month + 1, 0);
+
+    for (const peakDay of peakDays) {
+        const day = peakDay.getDate();
+        if (!eventsByDay[day]) eventsByDay[day] = [];
+        eventsByDay[day].push({
+            id: `pico-${year}-${month}-${day}`,
+            mensagem: "Horário de Pico",
+            hora: "13:30 - 15:00",
+            prioridade: "urgente",
+            type: 'pico'
+        });
+    }
+
+    for (const lembrete of lembretes) {
+        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+            if (isOcurringOn(d, lembrete)) {
+                const day = d.getDate();
+                if (!eventsByDay[day]) eventsByDay[day] = [];
+                eventsByDay[day].push({ ...lembrete, type: 'lembrete' });
+            }
+        }
+    }
+    return eventsByDay;
+}
+
+function isOcurringOn(date, lembrete) {
+    const startDate = new Date(lembrete.startDate + 'T00:00:00');
+    if (date < startDate) return false;
+
+    const diffTime = Math.abs(date - startDate);
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    switch (lembrete.frequencia) {
+        case 'hoje':
+            return diffDays === 0;
+        case 'diariamente':
+            return true;
+        case 'semanalmente':
+            return date.getDay() === startDate.getDay();
+        case 'quinzenalmente':
+            return diffDays % 14 === 0;
+        case 'mensalmente':
+            return date.getDate() === startDate.getDate();
+        default:
+            return false;
+    }
+}
+
+// --- Verificador Principal ---
+async function verificarHorarios() {
+    const agora = new Date();
+    const { lembretes = [] } = await chrome.storage.local.get('lembretes');
+    const horaAtual = agora.toTimeString().substring(0, 5);
+
+    for (let i = 0; i < lembretes.length; i++) {
+        const lembrete = lembretes[i];
+        if (lembrete.hora === horaAtual && isOcurringOn(agora, lembrete)) {
+            const hojeString = agora.toISOString().split('T')[0];
+            const lastNotifiedKey = `lastNotified_${lembrete.id}`;
+            const { [lastNotifiedKey]: lastNotified } = await chrome.storage.local.get(lastNotifiedKey);
+
+            if (lastNotified !== hojeString) {
+                 exibirNotificacao(lembrete.mensagem, 'lembrete', i, lembrete.prioridade);
+                 await chrome.storage.local.set({ [lastNotifiedKey]: hojeString });
+            }
+        }
+    }
+
+    const hojeString = agora.toISOString().split('T')[0];
+    const peakDays = await getPeakDays(agora.getFullYear(), agora.getMonth());
+    const isPeakDay = peakDays.some(d => d.toISOString().split('T')[0] === hojeString);
+    
+    if (isPeakDay) {
+        let { peakNotificationStatus } = await chrome.storage.local.get('peakNotificationStatus');
+        if (!peakNotificationStatus || peakNotificationStatus.date !== hojeString) {
+            peakNotificationStatus = { date: hojeString, notifiedStart: false, notifiedEnd: false };
+        }
+        if (horaAtual === PEAK_START_TIME && !peakNotificationStatus.notifiedStart) {
+            exibirNotificacao("Horário de pico iniciado!", 'pico', null, 'urgente');
+            peakNotificationStatus.notifiedStart = true;
+            await chrome.storage.local.set({ peakNotificationStatus });
+        }
+        if (horaAtual === PEAK_END_TIME && !peakNotificationStatus.notifiedEnd) {
+            exibirNotificacao("Horário de pico finalizado.", 'pico', null, 'urgente');
+            peakNotificationStatus.notifiedEnd = true;
+            await chrome.storage.local.set({ peakNotificationStatus });
+        }
+    }
+}
+
+
+// --- Lógica Central de Notificação ---
+async function exibirNotificacao(message, type, reminderIndex = null, prioridade = 'lembrete') {
+  const { activeSgdNotification } = await chrome.storage.session.get('activeSgdNotification');
+  if (activeSgdNotification) return;
+
+  const notificationId = `sgd_notification_${Date.now()}`;
+  // **MELHORIA:** Adiciona a prioridade aos dados da notificação.
+  const notificationData = { id: notificationId, message, type, reminderIndex, prioridade };
+
+  await chrome.storage.session.set({ activeSgdNotification: notificationData });
+  
+  playSound();
+  
+  const buttons = type === 'lembrete'
+    ? [{ title: 'Desativar por hoje' }, { title: 'Notificar em 5 min' }]
+    : [{ title: 'Fechar' }, { title: 'Notificar em 5 min' }];
+
+  chrome.notifications.create(notificationId, {
+    type: 'basic', iconUrl: 'icon128.png', title: 'Alerta SGD',
+    message: message, priority: 2, buttons: buttons, requireInteraction: true
+  });
+
+  const alarmName = `reschedule_${JSON.stringify(notificationData)}`;
+  chrome.alarms.create(alarmName, { delayInMinutes: 5 });
+
+  const tabs = await chrome.tabs.query({ url: ["http://*/*", "https://*/*"] });
+  for (const tab of tabs) {
+    showDivInTab(tab.id, notificationData);
+  }
+}
+
+async function showDivInTab(tabId, notificationData) {
+    try {
+        await chrome.tabs.sendMessage(tabId, {
+            type: 'show_sgd_notification',
+            notification: notificationData
+        });
+    } catch (error) {}
+}
+
+async function handleNotificationAction(notificationId, buttonIndex) {
+  const { activeSgdNotification } = await chrome.storage.session.get('activeSgdNotification');
+  if (!activeSgdNotification || activeSgdNotification.id !== notificationId) return;
+
+  const alarmName = `reschedule_${JSON.stringify(activeSgdNotification)}`;
+  chrome.alarms.clear(alarmName);
+
+  if (buttonIndex === 0) {
+    const { type, reminderIndex } = activeSgdNotification;
+    if (type === 'lembrete' && reminderIndex !== null) {
+        const { lembretes = [] } = await chrome.storage.local.get('lembretes');
+        const reminder = lembretes[reminderIndex];
+        if (reminder && reminder.frequencia === 'hoje') {
+            lembretes.splice(reminderIndex, 1);
+            await chrome.storage.local.set({ lembretes });
+        }
+    }
+  } else if (buttonIndex === 1) {
+    chrome.alarms.create(alarmName, { delayInMinutes: 5 });
+  }
+
+  await dismissAllNotifications(notificationId);
+}
+
+async function dismissAllNotifications(notificationId) {
+    await chrome.storage.session.remove('activeSgdNotification');
+    chrome.notifications.clear(notificationId);
+    const tabs = await chrome.tabs.query({ url: ["http://*/*", "https://*/*"] });
+    for (const tab of tabs) {
+        chrome.tabs.sendMessage(tab.id, { type: 'dismiss_sgd_notification' }).catch(() => {});
+    }
+}
+
+chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) => {
+    handleNotificationAction(notificationId, buttonIndex);
+});
+chrome.notifications.onClosed.addListener((notificationId, byUser) => {
+    if (byUser) {
+        handleNotificationAction(notificationId, -1);
+    }
+});
+
+
+// --- Funções de Feriados e Dias de Pico ---
 async function updateHolidays() {
   const currentYear = new Date().getFullYear();
   const yearsToFetch = Array.from({ length: 5 }, (_, i) => currentYear + i);
@@ -89,130 +267,6 @@ async function getPeakDays(year, month) {
     currentDate.setDate(currentDate.getDate() - 1);
   }
   return [...first5, ...last5];
-}
-
-
-// --- Lógica Central de Notificação (Refatorada) ---
-async function exibirNotificacao(message, type, reminderIndex = null) {
-  // **CORREÇÃO:** Verifica se já existe uma notificação ativa para evitar duplicatas.
-  const { activeSgdNotification } = await chrome.storage.session.get('activeSgdNotification');
-  if (activeSgdNotification) return;
-
-  const notificationId = `sgd_notification_${Date.now()}`;
-  const notificationData = { id: notificationId, message, type, reminderIndex };
-
-  await chrome.storage.session.set({ activeSgdNotification: notificationData });
-  
-  playSound();
-  
-  const buttons = type === 'lembrete'
-    ? [{ title: 'Desativar por hoje' }, { title: 'Notificar em 5 min' }]
-    : [{ title: 'Fechar' }, { title: 'Notificar em 5 min' }];
-
-  chrome.notifications.create(notificationId, {
-    type: 'basic', iconUrl: 'icon128.png', title: 'Alerta SGD',
-    message: message, priority: 2, buttons: buttons, requireInteraction: true
-  });
-
-  const alarmName = `reschedule_${JSON.stringify({ message, type, reminderIndex })}`;
-  chrome.alarms.create(alarmName, { delayInMinutes: 5 });
-
-  const tabs = await chrome.tabs.query({ url: ["http://*/*", "https://*/*"] });
-  for (const tab of tabs) {
-    showDivInTab(tab.id, notificationData);
-  }
-}
-
-async function showDivInTab(tabId, notificationData) {
-    try {
-        await chrome.tabs.sendMessage(tabId, {
-            type: 'show_sgd_notification',
-            notification: notificationData
-        });
-    } catch (error) {
-        // Ignora erros (ex: content script não injetado ainda).
-    }
-}
-
-async function handleNotificationAction(notificationId, buttonIndex) {
-  const { activeSgdNotification } = await chrome.storage.session.get('activeSgdNotification');
-  if (!activeSgdNotification || activeSgdNotification.id !== notificationId) return;
-
-  const { message, type, reminderIndex } = activeSgdNotification;
-  const alarmName = `reschedule_${JSON.stringify({ message, type, reminderIndex })}`;
-  chrome.alarms.clear(alarmName);
-
-  if (buttonIndex === 0) { // Botão "Desativar por hoje" ou "Fechar"
-    if (type === 'lembrete' && reminderIndex !== null) {
-      const { lembretes } = await chrome.storage.local.get('lembretes');
-      let lista = lembretes || [];
-      if (lista[reminderIndex]) {
-        lista.splice(reminderIndex, 1);
-        await chrome.storage.local.set({ lembretes: lista });
-      }
-    }
-  } else if (buttonIndex === 1) { // Botão "Notificar em 5 min"
-    chrome.alarms.create(alarmName, { delayInMinutes: 5 });
-  }
-
-  await dismissAllNotifications(notificationId);
-}
-
-async function dismissAllNotifications(notificationId) {
-    await chrome.storage.session.remove('activeSgdNotification');
-    chrome.notifications.clear(notificationId);
-    const tabs = await chrome.tabs.query({ url: ["http://*/*", "https://*/*"] });
-    for (const tab of tabs) {
-        chrome.tabs.sendMessage(tab.id, { type: 'dismiss_sgd_notification' }).catch(() => {});
-    }
-}
-
-chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) => {
-    handleNotificationAction(notificationId, buttonIndex);
-});
-chrome.notifications.onClosed.addListener((notificationId, byUser) => {
-    if (byUser) {
-        handleNotificationAction(notificationId, -1); // -1 indica que foi fechada sem clicar em botão.
-    }
-});
-
-
-// --- Verificador Principal (Inalterado) ---
-async function verificarHorarios() {
-  const agora = new Date();
-  const hojeString = agora.toISOString().split('T')[0];
-  const horaAtual = agora.toTimeString().substring(0, 5);
-  
-  // Verifica Lembretes
-  const { lembretes } = await chrome.storage.local.get('lembretes');
-  if (lembretes) {
-    const dataAtualFmt = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}-${String(agora.getDate()).padStart(2, '0')}`;
-    lembretes.forEach((item, index) => {
-      if (item.data === dataAtualFmt && item.hora === horaAtual) {
-        exibirNotificacao(item.mensagem || "Lembrete diário do SGD", 'lembrete', index);
-      }
-    });
-  }
-  
-  // Verifica Horário de Pico
-  const peakDays = await getPeakDays(agora.getFullYear(), agora.getMonth());
-  const isPeakDay = peakDays.some(d => d.toISOString().split('T')[0] === hojeString);
-  if (isPeakDay) {
-    let { peakNotificationStatus } = await chrome.storage.local.get('peakNotificationStatus');
-    if (!peakNotificationStatus || peakNotificationStatus.date !== hojeString) {
-      peakNotificationStatus = { date: hojeString, notifiedStart: false, notifiedEnd: false };
-    }
-    if (horaAtual === PEAK_START_TIME && !peakNotificationStatus.notifiedStart) {
-      exibirNotificacao("Horário de pico iniciado!", 'pico');
-      peakNotificationStatus.notifiedStart = true;
-      chrome.storage.local.set({ peakNotificationStatus });
-    }
-    if (horaAtual === PEAK_END_TIME && !peakNotificationStatus.notifiedEnd) {
-      exibirNotificacao("Horário de pico finalizado.", 'pico');
-      peakNotificationStatus.notifiedEnd = true;
-      chrome.storage.local.set({ peakNotificationStatus });
-    }
-  }
 }
 
 // --- Funções de Suporte (Som) ---
