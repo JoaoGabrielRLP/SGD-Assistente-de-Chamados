@@ -3,38 +3,34 @@ let currentYear;
 let eventsForCurrentMonth = {};
 
 document.addEventListener("DOMContentLoaded", () => {
-  const today = new Date();
-  currentMonth = today.getMonth();
-  currentYear = today.getFullYear();
-  
   setupTabs();
   setupCalendarControls();
   setupForm();
+  setupSettings();
   
+  const today = new Date();
+  currentMonth = today.getMonth();
+  currentYear = today.getFullYear();
   renderCalendar(currentMonth, currentYear);
 });
+
+// --- ADICIONADO: Listener para atualização em tempo real ---
+// Este bloco ouve mensagens do background script. Se uma mensagem 'lembretes_updated'
+// for recebida, ele chama a função renderCalendar para redesenhar o calendário
+// com os dados mais recentes, refletindo a exclusão do lembrete.
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.type === 'lembretes_updated') {
+        console.log('Atualização de lembretes recebida, renderizando calendário novamente.');
+        renderCalendar(currentMonth, currentYear);
+    }
+});
+// --- FIM DA ADIÇÃO ---
+
 
 // --- Configuração Inicial ---
 function setupTabs() {
   const tabButtons = document.querySelectorAll(".tab-button");
   const tabContents = document.querySelectorAll(".tab-content");
-  const configContent = document.getElementById('configuracoes');
-
-  if (!configContent.innerHTML.trim()) {
-      configContent.innerHTML = `
-        <h2>Configurações Gerais</h2>
-        <div class="setting">
-          <label for="volume">Volume da Notificação:</label>
-          <input type="range" id="volume" min="0" max="1" step="0.1" value="1">
-        </div>
-        <div class="setting">
-          <label for="sound-picker">Som da Notificação (MP3):</label>
-          <input type="file" id="sound-picker" accept=".mp3">
-          <span id="current-sound-name">Som atual: Padrão</span>
-        </div>
-      `;
-      setupSettings();
-  }
 
   tabButtons.forEach(button => {
     button.addEventListener("click", () => {
