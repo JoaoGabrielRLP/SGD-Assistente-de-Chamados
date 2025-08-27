@@ -95,3 +95,106 @@ input[type="text"], input[type="date"], input[type="time"] { width: 100%; paddin
 .btn-secondary { background-color: #6c757d; color: white; }
 .btn-danger { background-color: #dc3545; color: white; }
 .hidden { display: none !important; }
+
+
+/* --- Estilos para o To-do List --- */
+
+.todo-list .popover-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.todo-list .popover-item-details {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Espaço entre checkbox e texto */
+}
+
+.todo-list .pico-item .popover-item-details {
+    gap: 0; /* Remove o gap para itens de pico que não tem checkbox */
+}
+
+/* Estilo para tarefas concluídas */
+.todo-list .popover-item.completed .popover-item-details span {
+    text-decoration: line-through;
+    color: #888;
+}
+
+/* Adiciona um ícone de "check" sutil em tarefas concluídas */
+.todo-list .popover-item.completed .popover-item-details::before {
+    content: '✔';
+    color: #28a745; /* Verde sucesso */
+    font-size: 14px;
+    margin-right: 5px;
+}
+
+/* Oculta o checkbox original, mas mantém funcional */
+.todo-list input[type="checkbox"] {
+    cursor: pointer;
+}
+
+/* --- Estilos para a Lista de Tarefas de Hoje --- */
+#today-list-container {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #ddd;
+}
+
+#today-list-container h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+#today-todo-list {
+    padding-left: 0;
+    list-style: none;
+    margin: 0;
+}
+
+.no-tasks {
+    color: #888;
+    font-style: italic;
+    padding: 10px 0;
+}
+
+/* --- Estilos para o Header do Calendário e Navegação --- */
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.nav-button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.nav-button:hover {
+    background-color: #0056b3;
+}
+
+/* --- Estilo para o dia selecionado no calendário --- */
+.calendar-day.selected {
+    background-color: #007bff;
+    color: white;
+    border-radius: 50%;
+    font-weight: bold;
+    border: 2px solid #0056b3;
+}
+
+/* Garante que o destaque não afete a cor do dia de hoje se ambos forem o mesmo */
+.calendar-day.today.selected {
+    background-color: #0056b3;
+}

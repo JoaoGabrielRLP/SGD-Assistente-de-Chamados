@@ -9,31 +9,36 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 // --- Listeners de Alarmes e Mensagens ---
-// AJUSTE REALIZADO AQUI: O listener foi transformado em 'async' para permitir
-// a verificação no armazenamento antes de re-notificar.
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === "verificarNotificacoes") {
     verificarHorarios();
   } else if (alarm.name.startsWith("reschedule_")) {
     const notificationData = JSON.parse(alarm.name.substring(11));
 
-    // --- INÍCIO DA CORREÇÃO ---
-    // Antes de re-notificar (após 5 minutos), verificamos se o lembrete original
-    // ainda existe no armazenamento.
     if (notificationData.type === 'lembrete' && notificationData.reminderId) {
         const { lembretes = [] } = await chrome.storage.local.get('lembretes');
         const reminderExists = lembretes.some(lembrete => lembrete.id === notificationData.reminderId);
-
-        // Se o lembrete não for encontrado (porque foi excluído), a função
-        // para aqui e não exibe a notificação fantasma.
         if (!reminderExists) {
             console.log(`Lembrete ${notificationData.reminderId} foi excluído. A re-notificação foi cancelada.`);
             return; 
         }
     }
-    // --- FIM DA CORREÇÃO ---
 
-    // Se o lembrete ainda existir (ou não for do tipo 'lembrete'), a notificação é exibida normalmente.
+    if (notificationData.type === 'pico') {
+        const hojeString = new Date().toISOString().split('T')[0];
+        const { peakNotificationStatus } = await chrome.storage.local.get('peakNotificationStatus');
+        if (peakNotificationStatus && peakNotificationStatus.date === hojeString) {
+            if (notificationData.message.includes("iniciado") && peakNotificationStatus.notifiedStart) {
+                console.log("Re-notificação de início de pico cancelada (já notificado).");
+                return;
+            }
+            if (notificationData.message.includes("finalizado") && peakNotificationStatus.notifiedEnd) {
+                console.log("Re-notificação de fim de pico cancelada (já notificado).");
+                return;
+            }
+        }
+    }
+
     exibirNotificacao(notificationData.message, notificationData.type, notificationData.reminderId, notificationData.prioridade);
   }
 });
@@ -121,26 +126,20 @@ function isOcurringOn(date, lembrete) {
 // --- Verificador Principal ---
 async function verificarHorarios() {
     const agora = new Date();
-    const { lembretes = [], snoozedReminders = {} } = await chrome.storage.local.get(['lembretes', 'snoozedReminders']);
+    const { lembretes = [] } = await chrome.storage.local.get('lembretes');
     const horaAtual = agora.toTimeString().substring(0, 5);
-    const hojeString = agora.toISOString().split('T')[0];
-
-    // Limpa lembretes adiados de dias anteriores
-    const newSnoozedReminders = {};
-    for (const id in snoozedReminders) {
-        if (snoozedReminders[id] === hojeString) {
-            newSnoozedReminders[id] = hojeString;
-        }
-    }
-    await chrome.storage.local.set({ snoozedReminders: newSnoozedReminders });
 
     for (let i = 0; i < lembretes.length; i++) {
         const lembrete = lembretes[i];
-        if (lembrete.hora === horaAtual && isOcurringOn(agora, lembrete) && !newSnoozedReminders[lembrete.id]) {
+        
+        // AJUSTE PRINCIPAL AQUI: Adicionada a verificação "!lembrete.completed"
+        // Agora, a notificação só é disparada se a tarefa NÃO estiver concluída.
+        if (lembrete.hora === horaAtual && isOcurringOn(agora, lembrete) && !lembrete.completed) {
             exibirNotificacao(lembrete.mensagem, 'lembrete', lembrete.id, lembrete.prioridade);
         }
     }
 
+    const hojeString = agora.toISOString().split('T')[0];
     const peakDays = await getPeakDays(agora.getFullYear(), agora.getMonth());
     const isPeakDay = peakDays.some(d => d.toISOString().split('T')[0] === hojeString);
     
@@ -176,7 +175,7 @@ async function exibirNotificacao(message, type, reminderId = null, prioridade = 
   playSound();
   
   const buttons = type === 'lembrete'
-    ? [{ title: 'Desativar por hoje' }, { title: 'Notificar em 5 min' }]
+    ? [{ title: 'Concluir' }, { title: 'Desativar por hoje' }, { title: 'Notificar em 5 min' }]
     : [{ title: 'Fechar' }, { title: 'Notificar em 5 min' }];
 
   chrome.notifications.create(notificationId, {
@@ -208,32 +207,34 @@ async function handleNotificationAction(notificationId, buttonIndex) {
 
   const alarmName = `reschedule_${JSON.stringify(activeSgdNotification)}`;
   chrome.alarms.clear(alarmName);
-
-  if (buttonIndex === 0) { // Botão "Desativar por hoje" foi clicado
-    const { type, reminderId } = activeSgdNotification;
-    
-    // Verifica se é um lembrete e se tem um ID para ser removido
-    if (type === 'lembrete' && reminderId) {
-        // 1. Carrega a lista atual de lembretes
-        const { lembretes = [] } = await chrome.storage.local.get('lembretes');
-
-        // 2. Filtra a lista, removendo o lembrete com o ID correspondente
-        const lembretesAtualizados = lembretes.filter(lembrete => lembrete.id !== reminderId);
-
-        // 3. Salva a nova lista (sem o lembrete removido) de volta no armazenamento
-        await chrome.storage.local.set({ lembretes: lembretesAtualizados });
-        
-        console.log(`Lembrete ${reminderId} foi removido permanentemente.`);
-
-        // 4. Envia uma mensagem para a interface (popup) atualizar o calendário
-        chrome.runtime.sendMessage({ type: 'lembretes_updated' });
-    }
-  } else if (buttonIndex === 1) { // Botão "Notificar em 5 min"
-    // Se o usuário quiser adiar por 5 min, o alarme é recriado.
-    chrome.alarms.create(alarmName, { delayInMinutes: 5 });
+  
+  const { type, reminderId } = activeSgdNotification;
+  
+  if (type === 'lembrete') {
+      if (buttonIndex === 0) { // Botão "Concluir"
+          const { lembretes = [] } = await chrome.storage.local.get('lembretes');
+          const lembreteIndex = lembretes.findIndex(r => r.id === reminderId);
+          if (lembreteIndex > -1) {
+              lembretes[lembreteIndex].completed = true;
+              await chrome.storage.local.set({ lembretes });
+              chrome.runtime.sendMessage({ type: 'lembretes_updated' });
+              console.log(`Lembrete ${reminderId} foi marcado como concluído.`);
+          }
+      } else if (buttonIndex === 1) { // Botão "Desativar por hoje"
+          const { lembretes = [] } = await chrome.storage.local.get('lembretes');
+          const lembretesAtualizados = lembretes.filter(r => r.id !== reminderId);
+          await chrome.storage.local.set({ lembretes: lembretesAtualizados });
+          console.log(`Lembrete ${reminderId} foi removido permanentemente.`);
+          chrome.runtime.sendMessage({ type: 'lembretes_updated' });
+      } else if (buttonIndex === 2) { // Botão "Notificar em 5 min"
+          chrome.alarms.create(alarmName, { delayInMinutes: 5 });
+      }
+  } else if (type === 'pico') {
+      if (buttonIndex === 1) { // "Notificar em 5 min" para picos
+          chrome.alarms.create(alarmName, { delayInMinutes: 5 });
+      }
   }
 
-  // Independentemente do botão, a notificação atual é dispensada.
   await dismissAllNotifications(notificationId);
 }
 

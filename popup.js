@@ -1,31 +1,35 @@
 let currentMonth;
 let currentYear;
-let eventsForCurrentMonth = {};
+let selectedDate = new Date();
+let eventsForCurrentMonth = {}; // Guarda os eventos do mês para acesso rápido
 
 document.addEventListener("DOMContentLoaded", () => {
   setupTabs();
   setupCalendarControls();
   setupForm();
-  setupSettings();
+  setupSettings(); 
   
   const today = new Date();
   currentMonth = today.getMonth();
   currentYear = today.getFullYear();
-  renderCalendar(currentMonth, currentYear);
+  
+  renderAllViews();
 });
 
-// --- ADICIONADO: Listener para atualização em tempo real ---
-// Este bloco ouve mensagens do background script. Se uma mensagem 'lembretes_updated'
-// for recebida, ele chama a função renderCalendar para redesenhar o calendário
-// com os dados mais recentes, refletindo a exclusão do lembrete.
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'lembretes_updated') {
-        console.log('Atualização de lembretes recebida, renderizando calendário novamente.');
-        renderCalendar(currentMonth, currentYear);
+        renderAllViews();
     }
 });
-// --- FIM DA ADIÇÃO ---
 
+// --- Função Central de Renderização ---
+async function renderAllViews() {
+    await renderCalendar(currentMonth, currentYear);
+    // Encontra os eventos para o dia selecionado e renderiza a lista
+    const day = selectedDate.getDate();
+    const eventsForSelectedDay = eventsForCurrentMonth[day] || [];
+    renderDayTasksList(eventsForSelectedDay, selectedDate);
+}
 
 // --- Configuração Inicial ---
 function setupTabs() {
@@ -88,7 +92,7 @@ function setupSettings() {
 }
 
 // --- Navegação e Renderização do Calendário ---
-function navigateMonth(direction) {
+async function navigateMonth(direction) {
     currentMonth += direction;
     if (currentMonth < 0) {
         currentMonth = 11;
@@ -97,7 +101,9 @@ function navigateMonth(direction) {
         currentMonth = 0;
         currentYear++;
     }
-    renderCalendar(currentMonth, currentYear);
+    // Ao navegar, seleciona o dia 1 do novo mês como padrão
+    selectedDate = new Date(currentYear, currentMonth, 1);
+    await renderAllViews();
 }
 
 async function renderCalendar(month, year) {
@@ -105,6 +111,7 @@ async function renderCalendar(month, year) {
     const calendarBody = document.getElementById("calendar-body");
     calendarBody.innerHTML = "";
     
+    // Busca e armazena os eventos do mês atual
     eventsForCurrentMonth = await chrome.runtime.sendMessage({ type: 'get_events_for_month', year, month });
 
     const diasSemana = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
@@ -132,13 +139,16 @@ async function renderCalendar(month, year) {
         if (day === today.getDate() && year === today.getFullYear() && month === today.getMonth()) {
             dayCell.classList.add("today");
         }
+        
+        // Adiciona a classe 'selected' se o dia for o dia selecionado
+        if (day === selectedDate.getDate() && year === selectedDate.getFullYear() && month === selectedDate.getMonth()) {
+            dayCell.classList.add("selected");
+        }
 
         const events = eventsForCurrentMonth[day];
         if (events && events.length > 0) {
             dayCell.classList.add("has-events");
-            
-            const highestPriority = getHighestPriority(events);
-            dayCell.classList.add(`day-color-${highestPriority}`);
+            dayCell.classList.add(`day-color-${getHighestPriority(events)}`);
 
             const eventCount = document.createElement('span');
             eventCount.className = 'event-count';
@@ -147,9 +157,48 @@ async function renderCalendar(month, year) {
 
             dayCell.appendChild(createPopover(events));
         }
+
+        // Adiciona o evento de clique para cada dia do calendário
+        dayCell.addEventListener('click', (e) => {
+            const clickedDay = parseInt(e.currentTarget.dataset.day, 10);
+            selectedDate = new Date(year, month, clickedDay);
+
+            document.querySelectorAll('.calendar-day.selected').forEach(el => el.classList.remove('selected'));
+            e.currentTarget.classList.add('selected');
+
+            // CORREÇÃO: Pega os eventos já carregados e passa para a função de renderizar a lista
+            const eventsForDay = eventsForCurrentMonth[clickedDay] || [];
+            renderDayTasksList(eventsForDay, selectedDate);
+        });
+
         calendarBody.appendChild(dayCell);
     }
 }
+
+// --- Renderização da Lista de Tarefas do Dia Selecionado ---
+function renderDayTasksList(events, date) {
+    const listContainer = document.getElementById('today-todo-list');
+    const titleElement = document.querySelector('#today-list-container h4');
+    listContainer.innerHTML = ''; 
+
+    const today = new Date();
+    if (date.toDateString() === today.toDateString()) {
+        titleElement.textContent = 'Tarefas de Hoje';
+    } else {
+        titleElement.textContent = `Tarefas para ${date.toLocaleDateString('pt-BR')}`;
+    }
+
+    if (!events || events.length === 0) {
+        listContainer.innerHTML = '<li class="no-tasks">Nenhuma tarefa para este dia.</li>';
+        return;
+    }
+
+    events.sort((a,b) => (a.hora > b.hora) ? 1 : -1).forEach(event => {
+        const taskElement = createTaskElement(event);
+        listContainer.appendChild(taskElement);
+    });
+}
+
 
 // --- Lógica do Popover e Prioridades ---
 function getHighestPriority(events) {
@@ -162,62 +211,92 @@ function createPopover(events) {
     const popover = document.createElement('div');
     popover.className = 'day-popover';
     const list = document.createElement('ul');
-    list.className = 'popover-list';
+    list.className = 'popover-list todo-list';
 
-    events.forEach(event => {
-        const item = document.createElement('li');
-        item.className = 'popover-item';
-        
-        const details = document.createElement('div');
-        details.className = 'popover-item-details';
-        
-        const colorDot = document.createElement('div');
-        colorDot.className = `popover-item-color prio-${event.prioridade}`;
-        details.appendChild(colorDot);
-        
-        const textSpan = document.createElement('span');
-        textSpan.innerHTML = `<strong>${event.hora}</strong> - ${event.mensagem}`;
-        details.appendChild(textSpan);
-        
-        item.appendChild(details);
-
-        if (event.type === 'lembrete') {
-            const actions = document.createElement('div');
-            actions.className = 'popover-item-actions';
-            
-            const editButton = document.createElement('button');
-            editButton.dataset.id = event.id;
-            editButton.title = "Editar";
-            editButton.innerHTML = '&#9998;';
-            editButton.addEventListener('click', (e) => { e.stopPropagation(); openEditModal(e.target.dataset.id); });
-
-            const deleteButton = document.createElement('button');
-            deleteButton.dataset.id = event.id;
-            deleteButton.title = "Excluir";
-            deleteButton.innerHTML = '&#128465;';
-            deleteButton.addEventListener('click', (e) => { e.stopPropagation(); openDeleteModal(e.target.dataset.id); });
-
-            actions.appendChild(editButton);
-            actions.appendChild(deleteButton);
-            item.appendChild(actions);
-        }
-        list.appendChild(item);
+    events.sort((a,b) => (a.hora > b.hora) ? 1 : -1).forEach(event => {
+        const taskElement = createTaskElement(event);
+        list.appendChild(taskElement);
     });
     popover.appendChild(list);
 
     popover.addEventListener('mouseover', (e) => {
         const dayCell = e.currentTarget.parentElement;
         const dayIndex = Array.from(dayCell.parentElement.children).indexOf(dayCell) % 7;
-        
         popover.classList.remove('align-right', 'align-left');
-        if (dayIndex < 2) {
-            popover.classList.add('align-left');
-        } else if (dayIndex > 4) {
-            popover.classList.add('align-right');
-        }
+        if (dayIndex < 2) popover.classList.add('align-left');
+        else if (dayIndex > 4) popover.classList.add('align-right');
     });
 
     return popover;
+}
+
+function createTaskElement(event) {
+    const item = document.createElement('li');
+    item.className = 'popover-item';
+
+    if (event.type === 'pico') {
+        item.classList.add('pico-item');
+        item.innerHTML = `
+            <div class="popover-item-details">
+                <div class="popover-item-color prio-${event.prioridade}"></div>
+                <span><strong>${event.hora}</strong> - ${event.mensagem}</span>
+            </div>
+        `;
+    } 
+    else if (event.type === 'lembrete') {
+        item.classList.toggle('completed', event.completed);
+        
+        const taskContent = document.createElement('div');
+        taskContent.className = 'popover-item-details';
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = event.completed;
+        checkbox.dataset.id = event.id;
+        checkbox.addEventListener('change', toggleReminderCompletion);
+
+        const textSpan = document.createElement('span');
+        textSpan.innerHTML = `<strong>${event.hora}</strong> - ${event.mensagem}`;
+        
+        taskContent.appendChild(checkbox);
+        taskContent.appendChild(textSpan);
+
+        const actions = document.createElement('div');
+        actions.className = 'popover-item-actions';
+        
+        const editButton = document.createElement('button');
+        editButton.dataset.id = event.id;
+        editButton.title = "Editar";
+        editButton.innerHTML = '&#9998;';
+        editButton.addEventListener('click', (e) => { e.stopPropagation(); openEditModal(e.target.dataset.id); });
+
+        const deleteButton = document.createElement('button');
+        deleteButton.dataset.id = event.id;
+        deleteButton.title = "Excluir";
+        deleteButton.innerHTML = '&#128465;';
+        deleteButton.addEventListener('click', (e) => { e.stopPropagation(); openDeleteModal(e.target.dataset.id); });
+
+        actions.appendChild(editButton);
+        actions.appendChild(deleteButton);
+
+        item.appendChild(taskContent);
+        item.appendChild(actions);
+    }
+    return item;
+}
+
+async function toggleReminderCompletion(event) {
+    const reminderId = event.target.dataset.id;
+    const isCompleted = event.target.checked;
+
+    const { lembretes = [] } = await chrome.storage.local.get('lembretes');
+    const reminderIndex = lembretes.findIndex(r => r.id === reminderId);
+
+    if (reminderIndex > -1) {
+        lembretes[reminderIndex].completed = isCompleted;
+        await chrome.storage.local.set({ lembretes });
+        await renderAllViews();
+    }
 }
 
 
@@ -233,6 +312,7 @@ async function saveReminder(event, reminderId = null) {
         hora: document.getElementById(`${prefix}horarioLembrete`).value,
         frequencia: document.querySelector(`input[name="${prefix}frequencia"]:checked`).value,
         prioridade: document.querySelector(`input[name="${prefix}prioridade"]:checked`).value,
+        completed: false
     };
 
     if (!reminder.mensagem || !reminder.startDate || !reminder.hora) {
@@ -243,7 +323,10 @@ async function saveReminder(event, reminderId = null) {
     const { lembretes = [] } = await chrome.storage.local.get('lembretes');
     if (isEditing) {
         const index = lembretes.findIndex(r => r.id === reminderId);
-        if (index > -1) lembretes[index] = reminder;
+        if (index > -1) {
+            reminder.completed = lembretes[index].completed || false; 
+            lembretes[index] = reminder;
+        }
     } else {
         lembretes.push(reminder);
     }
@@ -253,7 +336,7 @@ async function saveReminder(event, reminderId = null) {
     if (isEditing) closeModal();
     else document.getElementById('mensagemLembrete').value = '';
 
-    renderCalendar(currentMonth, currentYear);
+    await renderAllViews();
 }
 
 // --- Lógica dos Modais ---
@@ -332,7 +415,7 @@ function openDeleteModal(reminderId) {
             if (index > -1) lembretes.splice(index, 1);
             await chrome.storage.local.set({ lembretes });
             closeModal();
-            renderCalendar(currentMonth, currentYear);
+            await renderAllViews();
         });
         document.getElementById('cancel-delete').addEventListener('click', closeModal);
     });

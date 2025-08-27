@@ -1,87 +1,93 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Notificações SGD</title>
-  <link rel="stylesheet" href="popup.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SGD Assistente</title>
+    <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <div class="container">
-    <div class="tabs">
-      <button class="tab-button active" data-tab="calendario">Agenda e Lembretes</button>
-      <button class="tab-button" data-tab="configuracoes">Configurações</button>
-    </div>
 
-    <!-- Aba de Calendário e Lembretes -->
-    <div id="calendario" class="tab-content active">
-      <section>
-        <h2>Calendário de Eventos</h2>
-        <div id="calendar-container">
-          <div id="calendar-header">
-            <button id="prev-month">&lt;</button>
-            <h3 id="month-year"></h3>
-            <button id="next-month">&gt;</button>
-          </div>
-          <div id="calendar-body"></div>
+    <div class="container">
+        <div class="tabs">
+            <button class="tab-button active" data-tab="agenda">Agenda e Lembretes</button>
+            <button class="tab-button" data-tab="configuracoes">Configurações</button>
         </div>
-      </section>
-      
-      <section class="form-section">
-        <h2>Adicionar Novo Lembrete</h2>
-        <input type="text" id="mensagemLembrete" placeholder="Descrição do lembrete" />
-        <div class="form-group">
-          <input type="date" id="diaLembrete" />
-          <input type="time" id="horarioLembrete" />
-        </div>
-        
-        <div class="form-group options-group">
-          <div>
-            <label>Frequência:</label>
-            <div class="radio-group">
-              <input type="radio" id="freq-hoje" name="frequencia" value="hoje" checked><label for="freq-hoje">Hoje</label>
-              <input type="radio" id="freq-diariamente" name="frequencia" value="diariamente"><label for="freq-diariamente">Diário</label>
-              <input type="radio" id="freq-semanal" name="frequencia" value="semanalmente"><label for="freq-semanal">Semanal</label>
-              <input type="radio" id="freq-quinzenal" name="frequencia" value="quinzenalmente"><label for="freq-quinzenal">Quinzenal</label>
-              <input type="radio" id="freq-mensal" name="frequencia" value="mensalmente"><label for="freq-mensal">Mensal</label>
+
+        <div class="tab-contents">
+            
+            <div id="agenda" class="tab-content active">
+                
+                <div class="calendar-container">
+                    <h4>Calendário de Eventos</h4>
+                    <div class="calendar-header">
+                        <button id="prev-month" class="nav-button">&lt;</button>
+                        <span id="month-year"></span>
+                        <button id="next-month" class="nav-button">&gt;</button>
+                    </div>
+                    <div id="calendar-body" class="calendar-grid">
+                        </div>
+                </div>
+
+                <div class="form-section">
+                    <h4>Adicionar Novo Lembrete</h4>
+                    <input type="text" id="mensagemLembrete" placeholder="Descrição do lembrete">
+                    <div class="form-group">
+                        <input type="date" id="diaLembrete">
+                        <input type="time" id="horarioLembrete">
+                    </div>
+                    <div class="form-group options-group">
+                      <div>
+                        <label>Frequência:</label>
+                        <div class="radio-group">
+                          <input type="radio" id="freq-hoje" name="frequencia" value="hoje" checked><label for="freq-hoje">Hoje</label>
+                          <input type="radio" id="freq-diariamente" name="frequencia" value="diariamente"><label for="freq-diariamente">Diário</label>
+                          <input type="radio" id="freq-semanal" name="frequencia" value="semanalmente"><label for="freq-semanal">Semanal</label>
+                          <input type="radio" id="freq-quinzenal" name="frequencia" value="quinzenalmente"><label for="freq-quinzenal">Quinzenal</label>
+                          <input type="radio" id="freq-mensal" name="frequencia" value="mensalmente"><label for="freq-mensal">Mensal</label>
+                        </div>
+                      </div>
+                      <div>
+                        <label>Prioridade:</label>
+                        <div class="radio-group">
+                          <input type="radio" id="prio-lembrete" name="prioridade" value="lembrete" checked><label for="prio-lembrete" class="prio-lembrete">Lembrete</label>
+                          <input type="radio" id="prio-importante" name="prioridade" value="importante"><label for="prio-importante" class="prio-importante">Importante</label>
+                          <input type="radio" id="prio-urgente" name="prioridade" value="urgente"><label for="prio-urgente" class="prio-urgente">Urgente</label>
+                        </div>
+                      </div>
+                    </div>
+                    <button id="adicionarLembrete" class="btn-primary">Adicionar Lembrete</button>
+                </div>
+                
+                <div id="today-list-container">
+                    <h4>Tarefas de Hoje</h4>
+                    <ul id="today-todo-list" class="todo-list">
+                        </ul>
+                </div>
+
             </div>
-          </div>
-          <div>
-            <label>Prioridade:</label>
-            <div class="radio-group">
-              <input type="radio" id="prio-lembrete" name="prioridade" value="lembrete" checked><label for="prio-lembrete" class="prio-lembrete">Lembrete</label>
-              <input type="radio" id="prio-importante" name="prioridade" value="importante"><label for="prio-importante" class="prio-importante">Importante</label>
-              <input type="radio" id="prio-urgente" name="prioridade" value="urgente"><label for="prio-urgente" class="prio-urgente">Urgente</label>
+
+            <div id="configuracoes" class="tab-content">
+                <h4>Configurações Gerais</h4>
+                <div class="settings-item">
+                    <label for="volume">Volume da Notificação:</label>
+                    <input type="range" id="volume" min="0" max="1" step="0.1">
+                </div>
+                <div class="settings-item">
+                    <label for="sound-picker">Som da Notificação:</label>
+                    <input type="file" id="sound-picker" accept="audio/mpeg">
+                    <span id="current-sound-name">Som atual: Padrão</span>
+                </div>
             </div>
-          </div>
-        </div>
-        
-        <button id="adicionarLembrete" class="btn-primary">Adicionar Lembrete</button>
-      </section>
-    </div>
 
-    <!-- Aba de Configurações com conteúdo HTML -->
-    <div id="configuracoes" class="tab-content">
-       <h2>Configurações Gerais</h2>
-        <div class="setting">
-          <label for="volume">Volume da Notificação:</label>
-          <input type="range" id="volume" min="0" max="1" step="0.1" value="1">
-        </div>
-        <div class="setting">
-          <label for="sound-picker">Som da Notificação (MP3):</label>
-          <input type="file" id="sound-picker" accept=".mp3">
-          <span id="current-sound-name">Som atual: Padrão</span>
         </div>
     </div>
-  </div>
 
-  <!-- Modal para Edição/Confirmação -->
-  <div id="modal-backdrop" class="hidden">
-    <div id="modal-content">
-       <!-- O conteúdo do modal será injetado via JS -->
+    <div id="modal-backdrop" class="hidden">
+        <div id="modal-content">
+            </div>
     </div>
-  </div>
-
-  <script src="popup.js"></script>
+    
+    <script src="popup.js"></script>
 </body>
 </html>
