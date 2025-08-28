@@ -23,7 +23,7 @@ h2 {
 .tab-button { padding: 12px 18px; cursor: pointer; border: none; background-color: transparent; border-bottom: 3px solid transparent; font-size: 1.05em; transition: all 0.2s ease-in-out; }
 .tab-button:hover { background-color: #e9ecef; }
 .tab-button.active { border-bottom: 3px solid #007bff; font-weight: 600; color: #007bff; }
-.tab-content { display: none; padding-top: 15px; }
+.tab-content { display: none; padding-top: 15px; min-width: 500px; box-sizing: border-box;}
 .tab-content.active { display: block; }
 
 /* Calendário */
@@ -197,4 +197,44 @@ input[type="text"], input[type="date"], input[type="time"] { width: 100%; paddin
 /* Garante que o destaque não afete a cor do dia de hoje se ambos forem o mesmo */
 .calendar-day.today.selected {
     background-color: #0056b3;
+}
+
+/* --- Estilos para Forçar o Layout Correto no Modal de Edição --- */
+
+/* Garante que a seção do formulário dentro do modal se comporte como esperado */
+#modal-content .form-section {
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* Espaçamento entre os campos */
+}
+
+/* Garante que os grupos de data/hora e opções fiquem lado a lado */
+#modal-content .form-group {
+    display: flex;
+    gap: 10px;
+}
+
+/* Força os grupos de Frequência e Prioridade a se alinharem corretamente */
+#modal-content .options-group {
+    display: flex;
+    justify-content: space-between;
+}
+
+#modal-content .options-group > div {
+    flex: 1; /* Faz com que cada grupo (frequência/prioridade) ocupe metade do espaço */
+}
+
+/* Garante que os botões de rádio (bolinhas) fiquem organizados */
+#modal-content .radio-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+/* Alinha os botões de ação (Salvar/Cancelar) no final do modal */
+#modal-content .modal-actions {
+    display: flex;
+    justify-content: flex-end; /* Alinha à direita */
+    gap: 10px;
+    margin-top: 10px;
 }

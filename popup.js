@@ -1,7 +1,7 @@
 let currentMonth;
 let currentYear;
 let selectedDate = new Date();
-let eventsForCurrentMonth = {}; // Guarda os eventos do mês para acesso rápido
+let eventsForCurrentMonth = {};
 
 document.addEventListener("DOMContentLoaded", () => {
   setupTabs();
@@ -22,25 +22,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 });
 
-// --- Função Central de Renderização ---
 async function renderAllViews() {
     await renderCalendar(currentMonth, currentYear);
-    // Encontra os eventos para o dia selecionado e renderiza a lista
     const day = selectedDate.getDate();
     const eventsForSelectedDay = eventsForCurrentMonth[day] || [];
     renderDayTasksList(eventsForSelectedDay, selectedDate);
 }
 
-// --- Configuração Inicial ---
 function setupTabs() {
   const tabButtons = document.querySelectorAll(".tab-button");
   const tabContents = document.querySelectorAll(".tab-content");
-
   tabButtons.forEach(button => {
     button.addEventListener("click", () => {
       tabButtons.forEach(btn => btn.classList.remove("active"));
       button.classList.add("active");
-
       tabContents.forEach(content => {
         content.classList.toggle("active", content.id === button.dataset.tab);
       });
@@ -62,18 +57,15 @@ function setupSettings() {
     const volumeSlider = document.getElementById("volume");
     const soundPicker = document.getElementById("sound-picker");
     const currentSoundSpan = document.getElementById("current-sound-name");
-
     chrome.storage.local.get(["notificationVolume", "notificationSoundName"], (settings) => {
         if (settings.notificationVolume !== undefined) {
             volumeSlider.value = settings.notificationVolume;
         }
         currentSoundSpan.textContent = `Som atual: ${settings.notificationSoundName || "Padrão"}`;
     });
-
     volumeSlider.addEventListener("input", (event) => {
         chrome.storage.local.set({ notificationVolume: event.target.value });
     });
-
     soundPicker.addEventListener("change", (event) => {
         const file = event.target.files[0];
         if (file && file.type === "audio/mpeg") {
@@ -91,7 +83,6 @@ function setupSettings() {
     });
 }
 
-// --- Navegação e Renderização do Calendário ---
 async function navigateMonth(direction) {
     currentMonth += direction;
     if (currentMonth < 0) {
@@ -101,7 +92,6 @@ async function navigateMonth(direction) {
         currentMonth = 0;
         currentYear++;
     }
-    // Ao navegar, seleciona o dia 1 do novo mês como padrão
     selectedDate = new Date(currentYear, currentMonth, 1);
     await renderAllViews();
 }
@@ -111,7 +101,6 @@ async function renderCalendar(month, year) {
     const calendarBody = document.getElementById("calendar-body");
     calendarBody.innerHTML = "";
     
-    // Busca e armazena os eventos do mês atual
     eventsForCurrentMonth = await chrome.runtime.sendMessage({ type: 'get_events_for_month', year, month });
 
     const diasSemana = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
@@ -134,48 +123,35 @@ async function renderCalendar(month, year) {
         dayCell.className = "calendar-day";
         dayCell.textContent = day;
         dayCell.dataset.day = day;
-
         const today = new Date();
         if (day === today.getDate() && year === today.getFullYear() && month === today.getMonth()) {
             dayCell.classList.add("today");
         }
-        
-        // Adiciona a classe 'selected' se o dia for o dia selecionado
         if (day === selectedDate.getDate() && year === selectedDate.getFullYear() && month === selectedDate.getMonth()) {
             dayCell.classList.add("selected");
         }
-
         const events = eventsForCurrentMonth[day];
         if (events && events.length > 0) {
             dayCell.classList.add("has-events");
             dayCell.classList.add(`day-color-${getHighestPriority(events)}`);
-
             const eventCount = document.createElement('span');
             eventCount.className = 'event-count';
             eventCount.textContent = events.length;
             dayCell.appendChild(eventCount);
-
             dayCell.appendChild(createPopover(events));
         }
-
-        // Adiciona o evento de clique para cada dia do calendário
         dayCell.addEventListener('click', (e) => {
             const clickedDay = parseInt(e.currentTarget.dataset.day, 10);
             selectedDate = new Date(year, month, clickedDay);
-
             document.querySelectorAll('.calendar-day.selected').forEach(el => el.classList.remove('selected'));
             e.currentTarget.classList.add('selected');
-
-            // CORREÇÃO: Pega os eventos já carregados e passa para a função de renderizar a lista
             const eventsForDay = eventsForCurrentMonth[clickedDay] || [];
             renderDayTasksList(eventsForDay, selectedDate);
         });
-
         calendarBody.appendChild(dayCell);
     }
 }
 
-// --- Renderização da Lista de Tarefas do Dia Selecionado ---
 function renderDayTasksList(events, date) {
     const listContainer = document.getElementById('today-todo-list');
     const titleElement = document.querySelector('#today-list-container h4');
@@ -199,8 +175,6 @@ function renderDayTasksList(events, date) {
     });
 }
 
-
-// --- Lógica do Popover e Prioridades ---
 function getHighestPriority(events) {
     if (events.some(e => e.prioridade === 'urgente')) return 'urgente';
     if (events.some(e => e.prioridade === 'importante')) return 'importante';
@@ -212,13 +186,11 @@ function createPopover(events) {
     popover.className = 'day-popover';
     const list = document.createElement('ul');
     list.className = 'popover-list todo-list';
-
     events.sort((a,b) => (a.hora > b.hora) ? 1 : -1).forEach(event => {
         const taskElement = createTaskElement(event);
         list.appendChild(taskElement);
     });
     popover.appendChild(list);
-
     popover.addEventListener('mouseover', (e) => {
         const dayCell = e.currentTarget.parentElement;
         const dayIndex = Array.from(dayCell.parentElement.children).indexOf(dayCell) % 7;
@@ -226,7 +198,6 @@ function createPopover(events) {
         if (dayIndex < 2) popover.classList.add('align-left');
         else if (dayIndex > 4) popover.classList.add('align-right');
     });
-
     return popover;
 }
 
@@ -245,40 +216,31 @@ function createTaskElement(event) {
     } 
     else if (event.type === 'lembrete') {
         item.classList.toggle('completed', event.completed);
-        
         const taskContent = document.createElement('div');
         taskContent.className = 'popover-item-details';
-
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.checked = event.completed;
         checkbox.dataset.id = event.id;
         checkbox.addEventListener('change', toggleReminderCompletion);
-
         const textSpan = document.createElement('span');
         textSpan.innerHTML = `<strong>${event.hora}</strong> - ${event.mensagem}`;
-        
         taskContent.appendChild(checkbox);
         taskContent.appendChild(textSpan);
-
         const actions = document.createElement('div');
         actions.className = 'popover-item-actions';
-        
         const editButton = document.createElement('button');
         editButton.dataset.id = event.id;
         editButton.title = "Editar";
         editButton.innerHTML = '&#9998;';
         editButton.addEventListener('click', (e) => { e.stopPropagation(); openEditModal(e.target.dataset.id); });
-
         const deleteButton = document.createElement('button');
         deleteButton.dataset.id = event.id;
         deleteButton.title = "Excluir";
         deleteButton.innerHTML = '&#128465;';
         deleteButton.addEventListener('click', (e) => { e.stopPropagation(); openDeleteModal(e.target.dataset.id); });
-
         actions.appendChild(editButton);
         actions.appendChild(deleteButton);
-
         item.appendChild(taskContent);
         item.appendChild(actions);
     }
@@ -288,10 +250,8 @@ function createTaskElement(event) {
 async function toggleReminderCompletion(event) {
     const reminderId = event.target.dataset.id;
     const isCompleted = event.target.checked;
-
     const { lembretes = [] } = await chrome.storage.local.get('lembretes');
     const reminderIndex = lembretes.findIndex(r => r.id === reminderId);
-
     if (reminderIndex > -1) {
         lembretes[reminderIndex].completed = isCompleted;
         await chrome.storage.local.set({ lembretes });
@@ -299,12 +259,9 @@ async function toggleReminderCompletion(event) {
     }
 }
 
-
-// --- Lógica de CRUD (Create, Read, Update, Delete) ---
 async function saveReminder(event, reminderId = null) {
     const isEditing = !!reminderId;
     const prefix = isEditing ? 'edit-' : '';
-    
     const reminder = {
         id: reminderId || `lembrete-${Date.now()}`,
         mensagem: document.getElementById(`${prefix}mensagemLembrete`).value,
@@ -319,7 +276,6 @@ async function saveReminder(event, reminderId = null) {
         alert("Por favor, preencha todos os campos.");
         return;
     }
-
     const { lembretes = [] } = await chrome.storage.local.get('lembretes');
     if (isEditing) {
         const index = lembretes.findIndex(r => r.id === reminderId);
@@ -330,32 +286,33 @@ async function saveReminder(event, reminderId = null) {
     } else {
         lembretes.push(reminder);
     }
-    
     await chrome.storage.local.set({ lembretes });
-    
     if (isEditing) closeModal();
     else document.getElementById('mensagemLembrete').value = '';
-
     await renderAllViews();
 }
 
-// --- Lógica dos Modais ---
 const modalBackdrop = document.getElementById('modal-backdrop');
 const modalContent = document.getElementById('modal-content');
 
+// AJUSTE PRINCIPAL NESTA FUNÇÃO
 function openEditModal(reminderId) {
     chrome.storage.local.get('lembretes').then(({lembretes = []}) => {
         const reminder = lembretes.find(r => r.id === reminderId);
         if (!reminder) return;
 
+        // A estrutura HTML foi cuidadosamente recriada para espelhar
+        // a do formulário principal, garantindo que as classes CSS se apliquem.
         modalContent.innerHTML = `
             <h3>Editar Lembrete</h3>
             <div class="form-section">
-                <input type="text" id="edit-mensagemLembrete" value="${reminder.mensagem}">
+                <input type="text" id="edit-mensagemLembrete" value="${reminder.mensagem}" placeholder="Descrição do lembrete">
+                
                 <div class="form-group">
                     <input type="date" id="edit-diaLembrete" value="${reminder.startDate}">
                     <input type="time" id="edit-horarioLembrete" value="${reminder.hora}">
                 </div>
+
                 <div class="form-group options-group">
                   <div>
                     <label>Frequência:</label>
@@ -363,7 +320,7 @@ function openEditModal(reminderId) {
                       <input type="radio" id="edit-freq-hoje" name="edit-frequencia" value="hoje"><label for="edit-freq-hoje">Hoje</label>
                       <input type="radio" id="edit-freq-diariamente" name="edit-frequencia" value="diariamente"><label for="edit-freq-diariamente">Diário</label>
                       <input type="radio" id="edit-freq-semanal" name="edit-frequencia" value="semanalmente"><label for="edit-freq-semanal">Semanal</label>
-                      <input type="radio" id="edit-freq-quinzenal" name="edit-frequencia" value="quinzenalmente"><label for="edit-freq-quinzenal">15 dias</label>
+                      <input type="radio" id="edit-freq-quinzenal" name="edit-frequencia" value="quinzenalmente"><label for="edit-freq-quinzenal">Quinzenal</label>
                       <input type="radio" id="edit-freq-mensal" name="edit-frequencia" value="mensalmente"><label for="edit-freq-mensal">Mensal</label>
                     </div>
                   </div>
@@ -376,6 +333,7 @@ function openEditModal(reminderId) {
                     </div>
                   </div>
                 </div>
+
                 <div class="modal-actions">
                     <button id="cancel-edit" class="btn-secondary">Cancelar</button>
                     <button id="save-edit" class="btn-primary">Salvar</button>
