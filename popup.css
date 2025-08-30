@@ -238,3 +238,11 @@ input[type="text"], input[type="date"], input[type="time"] { width: 100%; paddin
     gap: 10px;
     margin-top: 10px;
 }
+
+/* --- Ajuste para a Lista de Tarefas com Barra de Rolagem --- */
+
+#today-todo-list {
+    max-height: 130px; /* Define uma altura máxima para a lista. Você pode ajustar este valor. */
+    overflow-y: auto;  /* Adiciona uma barra de rolagem vertical apenas quando o conteúdo ultrapassa a altura máxima. */
+    padding-right: 5px; /* Adiciona um pequeno espaço à direita para a barra de rolagem não sobrepor o conteúdo. */
+}
